@@ -4,6 +4,7 @@ import gulp from "gulp";
 import babel from "gulp-babel";
 import eslint from "gulp-eslint";
 import ext from "gulp-ext-replace";
+import jscc from "gulp-jscc";
 import uglify from "gulp-uglify";
 
 import { rollup } from "rollup";
@@ -74,6 +75,7 @@ function browserLib() {
     .pipe(eslint(eslintConfig))
     .pipe(eslint.format())
     .pipe(eslint.failAfterError())
+    .pipe(jscc({ values: { _DEBUG: process.env.DEBUG } }))
     .pipe(babel({plugins: ["@babel/transform-flow-strip-types"], presets}))
     .pipe(gulp.dest("browser/lib"));
 }
@@ -143,12 +145,14 @@ function cjsLib() {
     .pipe(eslint(eslintConfig))
     .pipe(eslint.format())
     .pipe(eslint.failAfterError())
+    .pipe(jscc({ values: { _DEBUG: process.env.DEBUG } }))
     .pipe(babel({plugins: ["@babel/transform-flow-strip-types"], presets}))
     .pipe(gulp.dest("lib"));
 }
 
 function cjsFlowLib() {
   return gulp.src("src/**/*.js")
+    .pipe(jscc({ values: { _DEBUG: process.env.DEBUG } }))
     .pipe(ext(".js.flow"))
     .pipe(gulp.dest("lib"));
 }

@@ -1,28 +1,37 @@
 /* @flow */
 
-import test from "ava";
+import * as assert from "assert";
+import { describe, it } from "mocha";
 import { PointerLevelError, ReadLimitError } from "@capnp-js/internal-error";
 
 import Limited from "../../src/Limited";
 
-test("`checkLevel`", t => {
-  t.plan(2);
+describe("Limited", function () {
+  describe(".checkLevel", function () {
+    const limiter = new Limited(100, 4);
 
-  const limiter = new Limited(100, 4);
+    it("doesn't throw for levels below the limiter's threshold", function () {
+      assert.doesNotThrow(() => limiter.checkLevel(4));
+    });
 
-  t.notThrows(() => limiter.checkLevel(4));
-  t.throws(() => {
-    limiter.checkLevel(5);
-  }, PointerLevelError);
-});
+    it("throws for a level beyond the limiter's threshold", function () {
+      assert.throws(() => {
+        limiter.checkLevel(5);
+      }, PointerLevelError);
+    });
+  });
 
-test("`read`", t => {
-  t.plan(2);
+  describe(".read", function () {
+    const limiter = new Limited(100, 4);
 
-  const limiter = new Limited(100, 4);
+    it("doesn't throw for reads below the limiter's threshold", function () {
+      assert.doesNotThrow(() => limiter.read(100));
+    });
 
-  t.notThrows(() => limiter.read(100));
-  t.throws(() => {
-    limiter.read(1);
-  }, ReadLimitError);
+    it("throws for reads beyond the limiter's threshold", function () {
+      assert.throws(() => {
+        limiter.read(1);
+      }, ReadLimitError);
+    });
+  });
 });
