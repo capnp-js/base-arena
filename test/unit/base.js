@@ -2,6 +2,7 @@
 
 import * as assert from "assert";
 import { describe, it } from "mocha";
+import { create, fill, set } from "@capnp-js/bytes";
 import {
   ListAlignmentError,
   ListTypeError,
@@ -42,17 +43,17 @@ describe("Base", function () {
 
   describe(".pointer operating on single-hop far pointers", function () {
     const segments = [
-      { id: 0, raw: new Uint8Array(8), end: 8 },
-      { id: 1, raw: new Uint8Array(32), end: 32 },
+      { id: 0, raw: create(8), end: 8 },
+      { id: 1, raw: create(32), end: 32 },
     ];
-    segments[0].raw[0] = 0x02;
-    segments[0].raw[4] = 0x01;
+    set(0x02, 0, segments[0].raw);
+    set(0x01, 4, segments[0].raw);
     const base = new Base(segments, new Unlimited());
 
     it("computes in bounds, struct landing pads", function () {
-      segments[1].raw[0] = 0x00;
-      segments[1].raw[4] = 0x01;
-      segments[1].raw[6] = 0x02;
+      set(0x00, 0, segments[1].raw);
+      set(0x01, 4, segments[1].raw);
+      set(0x02, 6, segments[1].raw);
       const p1 = base.pointer(root(base));
       assert.equal(p1.typeBits, 0x00);
       assert.equal(p1.hi, (0x02<<16) | 0x01);
@@ -60,9 +61,9 @@ describe("Base", function () {
     });
 
     it("computes in bounds, list landing pads", function () {
-      segments[1].raw.fill(0, 0, 8);
-      segments[1].raw[0] = 0x01;
-      segments[1].raw[4] = (3<<3) | 0x05;
+      fill(0, 0, 8, segments[1].raw);
+      set(0x01, 0, segments[1].raw);
+      set((3<<3) | 0x05, 4, segments[1].raw);
       const p2 = base.pointer(root(base));
       assert.equal(p2.typeBits, 0x01);
       assert.equal(p2.hi, (3<<3) | 0x05);
@@ -70,32 +71,32 @@ describe("Base", function () {
     });
 
     it("rejects in bounds, single-hop far pointer landing pads", function () {
-      segments[1].raw.fill(0, 0, 32);
-      segments[1].raw[0] = 0x02;
+      fill(0, 0, 32, segments[1].raw);
+      set(0x02, 0, segments[1].raw);
       assert.throws(() => {
         base.pointer(root(base));
       }, PointerTypeError);
     });
 
     it("rejects in bounds, double-hop far pointer landing pads", function () {
-      segments[1].raw.fill(0, 0, 32);
-      segments[1].raw[0] = 0x04 | 0x02;
+      fill(0, 0, 32, segments[1].raw);
+      set(0x04 | 0x02, 0, segments[1].raw);
       assert.throws(() => {
         base.pointer(root(base));
       }, PointerTypeError);
     })
 
     it("rejects in bounds, capability landing pads", function () {
-      segments[1].raw.fill(0, 0, 32);
-      segments[1].raw[0] = 0x03;
+      fill(0, 0, 32, segments[1].raw);
+      set(0x03, 0, segments[1].raw);
       assert.throws(() => {
         base.pointer(root(base));
       }, PointerTypeError);
     });
 
     it("rejects out of bounds landing pads", function () {
-      segments[1].raw.fill(0, 0, 32);
-      segments[0].raw[0] = (4<<3) | 0x02;
+      fill(0, 0, 32, segments[1].raw);
+      set((4<<3) | 0x02, 0, segments[0].raw);
       assert.throws(() => {
         base.pointer(root(base));
       }, SegmentRangeError);
@@ -104,21 +105,21 @@ describe("Base", function () {
 
   describe(".pointer operating on double-hop far pointers", function () {
     const segments = [
-      { id: 0, raw: new Uint8Array(8), end: 8 },
-      { id: 1, raw: new Uint8Array(16), end: 16 },
-      { id: 2, raw: new Uint8Array(32), end: 32 },
+      { id: 0, raw: create(8), end: 8 },
+      { id: 1, raw: create(16), end: 16 },
+      { id: 2, raw: create(32), end: 32 },
     ];
     const base = new Base(segments, new Unlimited());
 
-    segments[0].raw[0] = 0x04 | 0x02;
-    segments[0].raw[4] = 0x01;
-    segments[1].raw[0] = 0x02;
-    segments[1].raw[4] = 0x02;
+    set(0x04 | 0x02, 0, segments[0].raw);
+    set(0x01, 4, segments[0].raw);
+    set(0x02, 0, segments[1].raw);
+    set(0x02, 4, segments[1].raw);
 
     it("computes in bounds, struct landing pads", function () {
-      segments[1].raw[8] = 0x00;
-      segments[1].raw[12] = 0x01;
-      segments[1].raw[14] = 0x03;
+      set(0x00, 8, segments[1].raw);
+      set(0x01, 12, segments[1].raw);
+      set(0x03, 14, segments[1].raw);
       const p1 = base.pointer(root(base));
       assert.equal(p1.typeBits, 0x00);
       assert.equal(p1.hi, (0x03<<16) | 0x01);
@@ -126,9 +127,9 @@ describe("Base", function () {
     });
 
     it("computes in bounds, list landing pads", function () {
-      segments[1].raw.fill(0, 8, 16);
-      segments[1].raw[8] = 0x01;
-      segments[1].raw[12] = (4<<3) | 0x05;
+      fill(0, 8, 16, segments[1].raw);
+      set(0x01, 8, segments[1].raw);
+      set((4<<3) | 0x05, 12, segments[1].raw);
       const p2 = base.pointer(root(base));
       assert.equal(p2.typeBits, 0x01);
       assert.equal(p2.hi, (4<<3) | 0x05);
@@ -136,59 +137,59 @@ describe("Base", function () {
     });
 
     it("rejects in bounds, far pointer landing pads", function () {
-      segments[1].raw.fill(0, 8, 16);
-      segments[1].raw[8] = 0x02;
+      fill(0, 8, 16, segments[1].raw);
+      set(0x02, 8, segments[1].raw);
       assert.throws(() => {
         base.pointer(root(base));
       }, PointerTypeError);
     });
 
     it("rejects in bounds, capability tags", function () {
-      segments[1].raw.fill(0, 8, 16);
-      segments[1].raw[8] = 0x03;
+      fill(0, 8, 16, segments[1].raw);
+      set(0x03, 8, segments[1].raw);
       assert.throws(() => {
         base.pointer(root(base));
       }, PointerTypeError);
     });
 
     it("rejects in bounds, struct landing pads", function () {
-      segments[1].raw.fill(0, 0, 16);
-      segments[1].raw[0] = 0x00;
+      fill(0, 0, 16, segments[1].raw);
+      set(0x00, 0, segments[1].raw);
       assert.throws(() => {
         base.pointer(root(base));
       }, PointerTypeError);
     });
 
     it("rejects in bounds, list landing pads", function () {
-      segments[1].raw.fill(0, 0, 16);
-      segments[1].raw[0] = 0x01;
+      fill(0, 0, 16, segments[1].raw);
+      set(0x01, 0, segments[1].raw);
       assert.throws(() => {
         base.pointer(root(base));
       }, PointerTypeError);
     });
 
     it("rejects in bounds, capability landing pads", function () {
-      segments[1].raw.fill(0, 0, 16);
-      segments[1].raw[0] = 0x03;
+      fill(0, 0, 16, segments[1].raw);
+      set(0x03, 0, segments[1].raw);
       assert.throws(() => {
         base.pointer(root(base));
       }, PointerTypeError);
     });
 
     it("rejects in bounds, double-hop far pointer landing pads", function () {
-      segments[1].raw.fill(0, 8, 16);
-      segments[1].raw[0] = 0x04 | 0x02;
+      fill(0, 8, 16, segments[1].raw);
+      set(0x04 | 0x02, 0, segments[1].raw);
       assert.throws(() => {
         base.pointer(root(base));
       }, PointerTypeError);
     });
 
     it("rejects out of bounds landing pads", function () {
-      segments[0].raw.fill(0, 0, 8);
-      segments[0].raw[0] = (2<<3) | 0x04 | 0x02;
-      segments[0].raw[4] = 0x01;
-      segments[1].raw.fill(0, 0, 16);
-      segments[1].raw[0] = (4<<3) | 0x02; //TODO: This was setting on segments[0]. That was a bug, right?
+      fill(0, 0, 8, segments[0].raw);
+      set((2<<3) | 0x04 | 0x02, 0, segments[0].raw);
+      set(0x01, 4, segments[0].raw);
+      fill(0, 0, 16, segments[1].raw);
+      set((4<<3) | 0x02, 0, segments[1].raw); //TODO: This was setting on segments[0]. That was a bug, right?
       assert.throws(() => {
         base.pointer(root(base));
       }, SegmentRangeError);
@@ -196,7 +197,7 @@ describe("Base", function () {
   });
 
   describe(".specificStructLayout", function () {
-    const segment = { id: 0, raw: new Uint8Array(24), end: 24 };
+    const segment = { id: 0, raw: create(24), end: 24 };
     const base = new Base([segment], new Unlimited());
     const p = {
       typeBits: 0x00,
@@ -259,7 +260,7 @@ describe("Base", function () {
   });
 
   describe(".genericStructLayout", function () {
-    const segment = { id: 0, raw: new Uint8Array(24), end: 24 };
+    const segment = { id: 0, raw: create(24), end: 24 };
     const base = new Base([segment], new Unlimited());
     const p = {
       typeBits: 0x00,
@@ -316,7 +317,7 @@ describe("Base", function () {
   });
 
   describe(".boolListLayout", function () {
-    const segment = { id: 0, raw: new Uint8Array(24), end: 24 };
+    const segment = { id: 0, raw: create(24), end: 24 };
     const base = new Base([segment], new Unlimited());
     const p = {
       typeBits: 0x01,
@@ -398,7 +399,7 @@ describe("Base", function () {
   });
 
   describe(".blobLayout", function () {
-    const segment = { id: 0, raw: new Uint8Array(24), end: 24 };
+    const segment = { id: 0, raw: create(24), end: 24 };
     const base = new Base([segment], new Unlimited());
     const p = {
       typeBits: 0x01,
@@ -484,7 +485,7 @@ describe("Base", function () {
   });
 
   describe(".specificNonboolListLayout", function () {
-    const segment = { id: 0, raw: new Uint8Array(24), end: 24 };
+    const segment = { id: 0, raw: create(24), end: 24 };
     const base = new Base([segment], new Unlimited());
     const p = {
       typeBits: 0x01,
@@ -752,7 +753,7 @@ describe("Base", function () {
   });
 
   describe(".genericNonboolListLayout", function () {
-    const segment = { id: 0, raw: new Uint8Array(24), end: 24 };
+    const segment = { id: 0, raw: create(24), end: 24 };
     const base = new Base([segment], new Unlimited());
     const p = {
       typeBits: 0x01,
@@ -876,7 +877,7 @@ describe("Base", function () {
   });
 
   describe(".capLayout", function () {
-    const segment = { id: 0, raw: new Uint8Array(24), end: 24 };
+    const segment = { id: 0, raw: create(24), end: 24 };
     const base = new Base([segment], new Unlimited());
     const p = {
       typeBits: 0x03,

@@ -21,6 +21,7 @@ import type { ArenaB } from "@capnp-js/builder-core";
 
 import type { Limiter } from "./index";
 
+import { get } from "@capnp-js/bytes";
 import {
   DoubleFarTagError,
   InconsistentWordCountError,
@@ -122,7 +123,7 @@ export default class Base<+S: SegmentR> implements SegmentLookup<S>, ArenaR {
   }
 
   pointer(ref: Word<SegmentR>): Pointer<S> {
-    const lsb = ref.segment.raw[ref.position];
+    const lsb = get(ref.position, ref.segment.raw);
     const typeBits = u2_mask(lsb, 0x03);
     if (typeBits === 0x02) {
       const id = int32(ref.segment.raw, ref.position+4) >>> 0;
@@ -135,12 +136,12 @@ export default class Base<+S: SegmentR> implements SegmentLookup<S>, ArenaR {
       if (u3_mask(lsb, 0x04) === 0x00) {
         /* Single Hop */
         assertInBounds(far, 8);
-        return pointer.single(far, safeBits(u2_mask(far.segment.raw[far.position], 0x03)));
+        return pointer.single(far, safeBits(u2_mask(get(far.position, far.segment.raw), 0x03)));
       } else {
         /* Double Hop */
         assertInBounds(far, 16);
 
-        const bits = u3_mask(far.segment.raw[far.position], 0x07);
+        const bits = u3_mask(get(far.position, far.segment.raw), 0x07);
         if (bits !== 0x02) {
           // bits \in {0x00, 0x01, 0x03, 0x04, 0x05, 0x06, 0x07}
           const bits2 = u2_mask(bits, 0x03);
@@ -165,7 +166,7 @@ export default class Base<+S: SegmentR> implements SegmentLookup<S>, ArenaR {
           throw new DoubleFarTagError(offset);
         }
 
-        return pointer.double(this, far, safeBits(u2_mask(far.segment.raw[far.position+8], 0x03)));
+        return pointer.double(this, far, safeBits(u2_mask(get(far.position+8, far.segment.raw), 0x03)));
       }
     } else {
       if (typeBits === 0x03) {
